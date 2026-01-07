@@ -7,6 +7,12 @@ import (
 	"github.com/godbus/dbus/v5"
 	"os"
 	"time"
+	rg "github.com/gen2brain/raylib-go/raygui"
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
+
+const (
+	tui = false
 )
 
 func main() {
@@ -16,8 +22,43 @@ func main() {
 
 	go readKeyboardEvents(clear)
 	go listenNotifications(c)
-	go printNotifications(c, clear)
+	if tui {
+		go printNotifications(c, clear)
+	}else {
+		drawGUI(c,clear)
+	}	
 	select {}
+}
+
+func drawGUI(ch chan *dbus.Message, clear chan bool){
+	const (
+		screenWidth  = 800
+		screenHeight = 450
+	)
+	rl.InitWindow(screenWidth, screenHeight, "TODO")
+	panelContentRec := rl.Rectangle{0, 0, screenWidth, screenHeight}
+	var scrollIndex int32
+	var activeIndex int32
+	scrollText := ""
+	rl.SetTargetFPS(60)
+
+	for !rl.WindowShouldClose() {
+		select {
+		case v := <-ch:
+			scrollText += fmt.Sprint("%s | %s | %s", v.Body[3].(string), v.Body[0].(string), time.Now().Format(time.RFC1123))
+			fmt.Println(scrollText)
+		case <-clear:
+			scrollText = ""
+		default:
+		}
+	
+ 		rl.BeginDrawing()
+ 		rl.ClearBackground(rl.RayWhite)
+ 		
+ 		activeIndex = rg.ListView(panelContentRec,scrollText,&scrollIndex,activeIndex)
+ 	
+ 		rl.EndDrawing()
+ 	} 
 }
 
 func readKeyboardEvents(ch chan<- bool) {
@@ -65,6 +106,7 @@ func listenNotifications(ch chan *dbus.Message) {
 }
 
 func printNotifications(ch chan *dbus.Message, clear chan bool) {
+	
 	tab := table.New(os.Stdout)
 	tab.SetRowLines(true)
 	tab.SetHeaders("Notification", "Sender", "Raised at")
