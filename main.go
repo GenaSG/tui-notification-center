@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	tui = false
+	tui = true
 )
 
 func main() {
